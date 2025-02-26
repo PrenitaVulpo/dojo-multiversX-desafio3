@@ -1,7 +1,23 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  // "extends": "./tsconfig.base.json",  // Optionally extend from a base config file if you want shared settings across different configs
+  "compilerOptions": {
+    "target": "esnext",              // Use ESNext for better compatibility with Vite and modern JS
+    "module": "esnext",              // Use ESNext for module resolution
+    "moduleResolution": "node",      // Resolve modules as in Node.js
+    "jsx": "preserve",               // If you use JSX in Vue components
+    "esModuleInterop": true,         // Allow default imports from CommonJS modules
+    "skipLibCheck": true,            // Skip library checks for faster builds
+    "resolveJsonModule": true,       // Allow importing JSON files
+    "baseUrl": ".",                  // Use the root as the base for resolving modules
+    "paths": {
+      "@/*": ["src/*"]               // Path alias for src directory
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue"
+  ],
+  "exclude": ["node_modules"]
 }
