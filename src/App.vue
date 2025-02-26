@@ -1,35 +1,83 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import type { ChatBubbleI } from './TS/Interfaces/ChatBubbleI'
 import { generateContent } from './utils/gemini'
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 
 const prompt = ref("")
+const chatHistory = ref<Array<ChatBubbleI>>([]);
+
+const updateChatU = () => {
+  chatHistory.value.push({
+    from: 'user',
+    text: prompt.value
+  })}
+const updateChatB = (message: string) => {
+  chatHistory.value.push({
+    from: 'bot',
+    text: message
+  })}
+
 
 const generateByPrompt = async () => {
-  const content = await generateContent(prompt.value)
-  console.log({ content })
+  updateChatU();
+  try {
+    const content = await generateContent(prompt.value)
+    updateChatB(content)
+  } catch (error) {
+    updateChatB("desculpe! Houve um erro durante o processamento da sua requisição.")
+  console.error(error)
+  }
 }
+
+
+
 </script>
 
 <template>
   <div id="prompt-chat"></div>
-  <input v-model="prompt" type="text" name="prompt" id="prompt">
-  <button @click="generateByPrompt">Pesquisar</button>
+  <section class="input-area">
+
+  </section>
+  <section class="input-area">
+    <textarea v-model="prompt" type="text" name="prompt" id="prompt" class="textbox" />
+    <button @click="generateByPrompt" class="action-button">Fale comigo!</button>
+  </section>
+
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.input-area {
+  padding: 1rem 2rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-content: space-between;
+  border-radius: 20px;
+  border: 1px solid rgb(102, 102, 95);
+}
+.textbox {
+  height: 10rem;
+  width: 45rem;
+  border-radius: 25px;
+  display: flex;
+  background-color: #16161667;
+  padding: .5rem .5rem;
+  text-align: left;          /* Aligns text to the left horizontally */
+    vertical-align: top;       /* Makes sure text aligns at the top */
+    padding: 25px 5px;              /* Adds padding around the content */
+}
+.action-button {
+  height: 3rem;
+  width: 5rem;
+  margin-left: 1rem;
+  border: 1px solid rgb(102, 102, 95);
+  border-radius: 5px;
+  background-color: #16161667;
 }
 
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+.action-button:hover {
+
+  background-color: #29292967;
 }
 
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
 </style>
