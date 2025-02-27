@@ -2,125 +2,170 @@
 import type { ChatBubbleI } from './TS/Interfaces/ChatBubbleI'
 import { generateContent } from './utils/gemini'
 import { ref } from 'vue'
+import fOneStopped from '@/assets/f-one-stopped.svg'
+import fOneRan1 from '@/assets/f-one-ran-1.svg'
+import fOneRan2 from '@/assets/f-one-ran-2.svg'
 
-const prompt = ref("")
-const chatHistory = ref<Array<ChatBubbleI>>([]);
-const inputEnabled = ref<boolean>(false)
+const currentImage = ref(fOneStopped);
+let speed = ref(0)
+let rotate = ref(0)
+let intervalId = null;
 
-const inputSwitch = () => {
-  inputEnabled.value = !inputEnabled.value;
-};
+const run = (speedParam) => {
+  stop()
 
-const updateChatU = () => {
-  inputSwitch()
-  chatHistory.value.push({
-    from: 'user',
-    text: prompt.value
-  })
-  inputSwitch()
-};
-const updateChatB = (message: string) => {
-  chatHistory.value[chatHistory.value.length-1] = {
-    from: 'bot',
-    text: message
-  };
-};
-
-
-const generateByPrompt = async () => {
-  inputSwitch()
-  updateChatU();
-
-  chatHistory.value.push({
-    from: 'bot',
-    text: '...'
-  });
-  setTimeout(() =>{},500);
-  try {
-    const content = await generateContent(prompt.value)
-    updateChatB(content)
-  } catch (error) {
-    updateChatB("desculpe! Houve um erro durante o processamento da sua requisição.")
-  console.error(error)
+  if (speedParam < 1) {
+    return
   }
 
-  inputSwitch()
-  prompt.value = ""
+  const mapSpeedToInterval = (param) => {
+    const minInterval = 200;
+    const maxInterval = 450;
+
+    speed.value = param > 100 ? 100 : param;
+    return minInterval + (maxInterval - minInterval) * ((100 - speed.value) / 99);
+  };
+
+  const interval = mapSpeedToInterval(speedParam);
+  console.log(interval)
+  intervalId = setInterval(() => {
+    currentImage.value = currentImage.value === fOneRan2 ? fOneRan1 : fOneRan2;
+  }, interval);
+};
+
+const stop = () => {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+    currentImage.value = fOneStopped;
+    speed.value = 0;
+  }
 }
 
+const left = () => {
+  rotate.value = -45
+}
+
+const right = () => {
+  rotate.value = 45
+}
+
+const talk = () => {
+  console.log("Listening")
+}
 
 
 </script>
 
 <template>
-  <div id="prompt-chat"></div>
-  <section class="input-area" id="chat">
-    <div v-for="(bubble, index) in chatHistory" :key="index" :id="bubble.from=='user' ? 'user' : 'bot' " class="chat-bubble">
-      {{ bubble.text }}
-    </div>
-  </section>
-  <section class="input-area">
-    <textarea v-model="prompt" type="text" name="prompt" id="prompt" class="textbox" :disabled="inputEnabled"/>
-    <button @click="generateByPrompt" class="action-button" :disabled="inputEnabled">Fale comigo!</button>
-  </section>
+  <header class="header">
+    Hi, I’m <span>Senna</span> your AI Agent
+  </header>
+  <main class="main">
+    <section>
+      <button
+        @click="talk"
+      >
+        Click to talk <br>
+        <span>(or press space bar)</span>
+      </button>
 
+      <!-- <button @click="run(100)">run</button>
+      <button @click="stop">stop</button>
+      <button @click="left">left</button>
+      <button @click="right">right</button> -->
+    </section>
+    <section>
+      <div>
+      <img 
+        :key="currentImage"
+        :src="currentImage" 
+        alt="Formula 1"
+        :style="`transform: rotate(${rotate}deg);`"
+      >
+      </div>
+
+      <div class="informations">
+        <div class="information">
+          <p>Speed</p>
+          <div>{{ `${speed}%` }}</div>
+        </div>
+        <div class="divider" />
+        <div class="information">
+          <p>Direction</p>
+          <div>{{ `${rotate}deg` }}</div>
+        </div>
+      </div>
+    </section>
+  </main>
 </template>
 
 <style scoped>
-.input-area {
-  padding: 1rem 2rem;
+.header {
+  text-align: center;
+  font-size: 64px;
+  padding-top: 20px;
+}
+
+.header span {
+  color: #FF0000;
+  font-weight: 600;
+}
+
+.main {
   display: flex;
-  flex-direction: row;
+  padding: 0 40px;
+  justify-content: space-between;
   align-items: center;
-  align-content: space-between;
-  border-radius: 20px;
-  border: 1px solid rgb(102, 102, 95);
+  margin: 100px auto 0 auto;
+  max-width: 900px;
 }
 
-#chat {
-  height: 40vh;
-  flex-direction: column;
+.main button {
+  background: none;
+  cursor: pointer;
+  border: 2px solid #FFFFFF;
+  border-radius: 10px;
+  font-size: 48px;
+  padding: 20px;
+  color: #FFFFFF;
+  line-height: 0.7;
+  min-width: 330px;
+  font-family: "Pixelify Sans", serif;
 }
 
-.chat-bubble {
-  padding: 1rem;
-  border-radius: 50px;
+.main button span {
+  font-size: 20px;
 }
 
-#user {
-  background-color: aqua;
-  color: black;
-  align-self: flex-end;
+.main button:hover {
+  transform: scale(1.1);
 }
 
-#bot {
-  background-color: blue;
-  align-self: flex-start;
-}
-
-.textbox {
-  max-height: 10rem;
-  width: 45rem;
-  border-radius: 25px;
+.main .informations {
   display: flex;
-  background-color: #16161667;
-  padding: .5rem .5rem;
-  text-align: left;          /* Aligns text to the left horizontally */
-  vertical-align: top;       /* Makes sure text aligns at the top */
-  padding: 25px 5px;              /* Adds padding around the content */
-}
-.action-button {
-  height: 3rem;
-  width: 5rem;
-  margin-left: 1rem;
-  border: 1px solid rgb(102, 102, 95);
-  border-radius: 5px;
-  background-color: #16161667;
+  margin-top: 20px;
 }
 
-.action-button:hover {
+.main .informations .divider {
+  width: 10px;
+}
 
-  background-color: #29292967;
+.main .informations .information {
+  flex: 1;
+  font-size: 20px;
+}
+
+.main .informations .information p {
+  margin: unset;
+  text-align: center;
+}
+
+.main .informations .information div {
+  border: 1px solid #FFFFFF;
+  border-radius: 10px;
+  text-align: center;
+  padding: 4px;
 }
 
 </style>
