@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { ChatBubbleI } from './TS/Interfaces/ChatBubbleI'
 import { generateContent } from './utils/gemini'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import fOneStopped from '@/assets/f-one-stopped.svg'
 import fOneRan1 from '@/assets/f-one-ran-1.svg'
 import fOneRan2 from '@/assets/f-one-ran-2.svg'
@@ -10,6 +9,52 @@ const currentImage = ref(fOneStopped);
 let speed = ref(0)
 let rotate = ref(0)
 let intervalId = null;
+let chunks = []
+let recorder:MediaRecorder = null;
+
+const canRecord = ref(false);
+const isRecording = ref(false);
+// Create a Vue ref for the <audio> element
+const playback = ref<HTMLAudioElement | null>(null);
+
+const setupStream = (stream: MediaStream) => {
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => {
+    chunks.push(e.data);
+  }
+
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
+    chunks = [];
+    if (playback.value) {
+      const audioURL = window.URL.createObjectURL(blob);
+      playback.value.src = audioURL;
+    }
+  };
+
+
+  canRecord.value = true;
+};
+
+const audioSetup = () => {
+  console.log('audio setup');
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(setupStream)
+      .catch(err => console.error(err));
+  }
+};
+
+const record = () => {
+  if (!canRecord.value) return;
+  isRecording.value = !isRecording.value;
+
+  if (isRecording.value) {
+    recorder?.start();
+  } else {
+    recorder?.stop();
+  }
+};
 
 const run = (speedParam) => {
   stop()
@@ -54,7 +99,16 @@ const talk = () => {
   console.log("Listening")
 }
 
-
+onMounted(() => {
+  audioSetup();
+  // Listen for spacebar press to trigger the record function
+  document.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') { // Space bar
+      event.preventDefault(); // Prevent default behavior (scrolling or other actions)
+      record();
+    }
+  });
+});
 </script>
 
 <template>
@@ -63,12 +117,12 @@ const talk = () => {
   </header>
   <main class="main">
     <section>
-      <button
-        @click="talk"
-      >
+      <button @click="record">
         Click to talk <br>
-        <span>(or press space bar)</span>
+        <span v-if="!isRecording">(or press space bar)</span>
+        <span v-if="isRecording">Recording!</span>
       </button>
+      <audio ref="playback" class="playback" controls></audio>
 
       <!-- <button @click="run(100)">run</button>
       <button @click="stop">stop</button>
@@ -77,12 +131,12 @@ const talk = () => {
     </section>
     <section>
       <div>
-      <img 
-        :key="currentImage"
-        :src="currentImage" 
-        alt="Formula 1"
-        :style="`transform: rotate(${rotate}deg);`"
-      >
+        <img
+          :key="currentImage"
+          :src="currentImage"
+          alt="Formula 1"
+          :style="`transform: rotate(${rotate}deg);`"
+        >
       </div>
 
       <div class="informations">
