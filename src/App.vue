@@ -8,14 +8,29 @@ import fOneRan2 from '@/assets/f-one-ran-2.svg'
 const currentImage = ref(fOneStopped);
 let speed = ref(0)
 let rotate = ref(0)
+let voice = ref('')
 let intervalId = null;
 let chunks = []
 let recorder:MediaRecorder = null;
 
 const canRecord = ref(false);
 const isRecording = ref(false);
-// Create a Vue ref for the <audio> element
-const playback = ref<HTMLAudioElement | null>(null);
+
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => {
+      if (typeof reader.result !== 'string') {
+        reject('Failed to convert blob to base64 string');
+        return;
+      }
+      const base64String = reader.result.split(',')[1];
+      resolve(base64String);
+    };
+    reader.onerror = reject;
+  });
+}
 
 const setupStream = (stream: MediaStream) => {
   recorder = new MediaRecorder(stream);
@@ -23,21 +38,26 @@ const setupStream = (stream: MediaStream) => {
     chunks.push(e.data);
   }
 
-  recorder.onstop = () => {
+  recorder.onstop = async () => {
     const blob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
-    chunks = [];
-    if (playback.value) {
-      const audioURL = window.URL.createObjectURL(blob);
-      playback.value.src = audioURL;
-    }
-  };
 
+    chunks = [];
+
+    const base64AudioFile = await blobToBase64(blob);
+
+    const response = await generateContent(base64AudioFile);
+
+    const speedParam = typeof response.speed !== 'number' ? speed.value : response.speed
+    run(speedParam);
+
+    voice.value = response.voice;
+    rotate.value = response.direction || 0;
+  };
 
   canRecord.value = true;
 };
 
 const audioSetup = () => {
-  console.log('audio setup');
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(setupStream)
@@ -56,10 +76,10 @@ const record = () => {
   }
 };
 
-const run = (speedParam) => {
+const run = (speedParam: number) => {
   stop()
 
-  if (speedParam < 1) {
+  if (!speedParam || speedParam < 1) {
     return
   }
 
@@ -87,18 +107,6 @@ const stop = () => {
   }
 }
 
-const left = () => {
-  rotate.value = -45
-}
-
-const right = () => {
-  rotate.value = 45
-}
-
-const talk = () => {
-  console.log("Listening")
-}
-
 onMounted(() => {
   audioSetup();
   // Listen for spacebar press to trigger the record function
@@ -122,21 +130,19 @@ onMounted(() => {
         <span v-if="!isRecording">(or press space bar)</span>
         <span v-if="isRecording">Recording!</span>
       </button>
-      <audio ref="playback" class="playback" controls></audio>
-
-      <!-- <button @click="run(100)">run</button>
-      <button @click="stop">stop</button>
-      <button @click="left">left</button>
-      <button @click="right">right</button> -->
     </section>
     <section>
-      <div>
+      <div class="formula1">
         <img
           :key="currentImage"
           :src="currentImage"
           alt="Formula 1"
           :style="`transform: rotate(${rotate}deg);`"
         >
+
+        <div v-if="voice" class="voice">
+          {{ voice }}
+        </div>
       </div>
 
       <div class="informations">
@@ -194,6 +200,43 @@ onMounted(() => {
 
 .main button:hover {
   transform: scale(1.1);
+}
+
+.main .formula1 {
+  position: relative;
+}
+
+.main .formula1 .voice {
+  position: absolute;
+  top: -50px;
+  left: 0px;
+  background: #FFFFFF;
+  color: #000000;
+  padding: 10px;
+  border: 1px solid #000000;
+  border-radius: 10px;
+}
+
+.main .formula1 .voice::before {
+  content: "";
+  position: absolute;
+  bottom: -15px;
+  right: 0px;
+  transform: translateX(-50%);
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 15px solid #000000;
+}
+
+.main .formula1 .voice::after {
+  content: "";
+  position: absolute;
+  bottom: -13px;
+  right: 6px;
+  transform: translateX(-50%);
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-top: 13px solid #FFFFFF;;
 }
 
 .main .informations {
